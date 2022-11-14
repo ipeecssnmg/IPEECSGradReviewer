@@ -15,7 +15,7 @@ Switch to Actions page.
 
 ### Step 2
 
-Choose the latest build version and download the artifacts.
+Choose the latest build version and download the artifacts. (The top workflow in the list is the latest)
 
 ![downloadPack](https://user-images.githubusercontent.com/61203384/186876314-a7b89edb-2e77-4490-9701-2811ac62bb08.PNG)
 
