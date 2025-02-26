@@ -42,11 +42,12 @@ function parseHTMLTableElem(tableEl) {
         course.courseName = cells[2].innerText;
         course.courseType = cells[3].innerText;
         course.courseCredit = parseInt(cells[5].innerText);
-        if (cells[6].innerText ==="勞動服務通過"){
-            course.courseGrade = cells[6].innerText;
-        }else{
-            course.courseGrade = parseInt(cells[6].innerText);
-        }
+        // if (cells[6].innerText ==="勞動服務通過"){
+        //     course.courseGrade = cells[6].innerText;
+        // }else{
+        //     course.courseGrade = parseInt(cells[6].innerText);
+        // }
+        course.courseGrade = cells[6].innerText;
         courseList.push(course);
     }
     console.log(courseList);

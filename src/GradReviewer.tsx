@@ -188,7 +188,7 @@ function reviewCreativityAndEntrepreneurship(
       criteriaPassedCourses: totalPassedCourses[criteria],
     };
   }
-  
+
   if (totalRecognizedCredits >= totalCreditRequirement && isRequiredPassed) {
     isPassedFlags["CreativityAndEntrepreneurshipProgram"] = true;
   } else {
@@ -203,6 +203,8 @@ function reviewCreativityAndEntrepreneurship(
   console.log("Creativity And Entrepreneurship Result", result);
   return result;
 }
+
+let collegeRequired = new Set();
 
 function reviewCollegeRequired(
   courseList: Course[],
@@ -223,6 +225,9 @@ function reviewCollegeRequired(
       isPassedFlags[requiredCourse] = false;
       continue;
     }
+    recognizedCourses.forEach((course) => {
+      collegeRequired.add(course.courseID);
+    });
     criteriaPassedCourses[requiredCourse] = recognizedCourses;
     let recognizedCredits = recognizedCourses.reduce(
       (sum, course) => sum + course.courseCredit,
@@ -368,32 +373,10 @@ function reviewCSMajor(courseList: Course[], rules: { [key: string]: Rule }) {
   let result: ResultDict = {};
   let isPassedFlags: IsPassedFlagsDict = {};
   let criteriaPassedCourses: CriteriaPassedCoursesDict = {};
+  let majorRequired = new Set(collegeRequired);
+
   for (const rule in rules) {
     if (rule === "CEECSElective") {
-      // CEECS Elective is a special case, it should consider both the CEECS courses keywords and the courses' type as elctive
-      const ruleKeywords = rules[rule].courseKeywords;
-      let recognizedCourses = courseList.filter((course) => {
-        return ruleKeywords
-          .map((keyword: string) => new RegExp(keyword))
-          .some(
-            (regex: RegExp) =>
-              regex.test(course.courseID) && course.courseType === "選修"
-          ); // Adding required course type checking
-      });
-      criteriaPassedCourses[rule] = recognizedCourses;
-      let recognizedCredit = recognizedCourses.reduce(
-        (sum, course) => sum + course.courseCredit,
-        0
-      );
-      if (recognizedCredit >= rules[rule].creditRequirement) {
-        isPassedFlags[rule] = true;
-      } else {
-        isPassedFlags[rule] = false;
-      }
-      result[rule] = {
-        isPassed: isPassedFlags[rule],
-        criteriaPassedCourses: criteriaPassedCourses[rule],
-      };
       continue;
     }
     // Other rules are followed the same pattern as the general required courses rule
@@ -417,6 +400,8 @@ function reviewCSMajor(courseList: Course[], rules: { [key: string]: Rule }) {
       recognizedCourses = recognizedCourses.slice(0, 1); // Only the first course is counted as those are equivalent courses and others are ignored
     }
 
+    majorRequired.add(recognizedCourses[0].courseID);
+
     let recognizedCredit = recognizedCourses.reduce(
       (sum, course) => sum + course.courseCredit,
       0
@@ -433,6 +418,33 @@ function reviewCSMajor(courseList: Course[], rules: { [key: string]: Rule }) {
       criteriaPassedCourses: criteriaPassedCourses[rule],
     };
   }
+
+  // CEECS Elective is a special case, it should consider both the CEECS courses keywords and the courses' type as elctive
+  const rule = "CEECSElective";
+  const ruleKeywords = rules[rule].courseKeywords;
+  let recognizedCourses = courseList.filter((course) => {
+    return ruleKeywords
+      .map((keyword: string) => new RegExp(keyword))
+      .some(
+        (regex: RegExp) =>
+          regex.test(course.courseID) && !majorRequired.has(course.courseID)
+      ); // Adding required course type checking
+  });
+  criteriaPassedCourses[rule] = recognizedCourses;
+  let recognizedCredit = recognizedCourses.reduce(
+    (sum, course) => sum + course.courseCredit,
+    0
+  );
+  if (recognizedCredit >= rules[rule].creditRequirement) {
+    isPassedFlags[rule] = true;
+  } else {
+    isPassedFlags[rule] = false;
+  }
+  result[rule] = {
+    isPassed: isPassedFlags[rule],
+    criteriaPassedCourses: criteriaPassedCourses[rule],
+  };
+
   const isRulePassed = Object.values(isPassedFlags).every(
     (value) => value === true
   );
@@ -450,32 +462,9 @@ function reviewNetworkMajor(
   let result: ResultDict = {};
   let isPassedFlags: IsPassedFlagsDict = {};
   let criteriaPassedCourses: CriteriaPassedCoursesDict = {};
+  let majorRequired = new Set(collegeRequired);
   for (const rule in rules) {
     if (rule === "CEECSElective") {
-      // CEECS Elective is a special case, it should consider both the CEECS courses keywords and the courses' type as elctive
-      const ruleKeywords = rules[rule].courseKeywords;
-      let recognizedCourses = courseList.filter((course) => {
-        return ruleKeywords
-          .map((keyword: string) => new RegExp(keyword))
-          .some(
-            (regex: RegExp) =>
-              regex.test(course.courseID) && course.courseType === "選修"
-          ); // Adding required course type checking
-      });
-      criteriaPassedCourses[rule] = recognizedCourses;
-      let recognizedCredit = recognizedCourses.reduce(
-        (sum, course) => sum + course.courseCredit,
-        0
-      );
-      if (recognizedCredit >= rules[rule].creditRequirement) {
-        isPassedFlags[rule] = true;
-      } else {
-        isPassedFlags[rule] = false;
-      }
-      result[rule] = {
-        isPassed: isPassedFlags[rule],
-        criteriaPassedCourses: criteriaPassedCourses[rule],
-      };
       continue;
     }
     // Other rules are followed the same pattern as the general required courses rule
@@ -498,6 +487,7 @@ function reviewNetworkMajor(
       recognizedCourses.sort((a, b) => b.courseCredit - a.courseCredit); // Sort the courses by credit in descending order
       recognizedCourses = recognizedCourses.slice(0, 1); // Only the first course is counted as those are equivalent courses and others are ignored
     }
+    majorRequired.add(recognizedCourses[0].courseID);
     let recognizedCredit = recognizedCourses.reduce(
       (sum, course) => sum + course.courseCredit,
       0
@@ -514,6 +504,31 @@ function reviewNetworkMajor(
       criteriaPassedCourses: criteriaPassedCourses[rule],
     };
   }
+  const rule = "CEECSElective";
+  // CEECS Elective is a special case, it should consider both the CEECS courses keywords and the courses' type as elctive
+  const ruleKeywords = rules[rule].courseKeywords;
+  let recognizedCourses = courseList.filter((course) => {
+    return ruleKeywords
+      .map((keyword: string) => new RegExp(keyword))
+      .some(
+        (regex: RegExp) =>
+          regex.test(course.courseID) && !majorRequired.has(course.courseID)
+      ); // Adding required course type checking
+  });
+  criteriaPassedCourses[rule] = recognizedCourses;
+  let recognizedCredit = recognizedCourses.reduce(
+    (sum, course) => sum + course.courseCredit,
+    0
+  );
+  if (recognizedCredit >= rules[rule].creditRequirement) {
+    isPassedFlags[rule] = true;
+  } else {
+    isPassedFlags[rule] = false;
+  }
+  result[rule] = {
+    isPassed: isPassedFlags[rule],
+    criteriaPassedCourses: criteriaPassedCourses[rule],
+  };
   const isRulePassed = Object.values(isPassedFlags).every(
     (value) => value === true
   );
@@ -776,6 +791,7 @@ function reviewCOMajor(
   let result: ResultDict = {};
   let isPassedFlags: IsPassedFlagsDict = {};
   let criteriaPassedCourses: CriteriaPassedCoursesDict = {};
+  let majorRequired = new Set(collegeRequired);
 
   // For code clearity, we handle the COMajor rules differently as the EE Major did.
   // 1. Required (The same as commonRequired pipeline)
@@ -800,6 +816,7 @@ function reviewCOMajor(
       recognizedCourses.sort((a, b) => b.courseCredit - a.courseCredit); // Sort the courses by credit in descending order
       recognizedCourses = recognizedCourses.slice(0, 1); // Only the first course is counted as those are equivalent courses and others are ignored
     }
+    majorRequired.add(recognizedCourses[0].courseID);
     let recognizedCredit = recognizedCourses[0].courseCredit;
 
     if (recognizedCredit === required[requiredCourse].creditRequirement) {
@@ -831,6 +848,9 @@ function reviewCOMajor(
     if (recognizedCourses.length > 1) {
       recognizedCourses.sort((a, b) => b.courseCredit - a.courseCredit); // Sort the courses by credit in descending order
       recognizedCourses = recognizedCourses.slice(0, 1); // Only the first course is counted as those are equivalent courses and others are ignored
+    }
+    if (recognizedCourses.length !== 0){
+      majorRequired.add(recognizedCourses[0].courseID);
     }
     criteriaPassedCourses["asteriskRequiredElective"] =
       criteriaPassedCourses["asteriskRequiredElective"].concat(
@@ -867,7 +887,7 @@ function reviewCOMajor(
         (keyword: string) => new RegExp(keyword)
       ).some(
         (regex: RegExp) =>
-          regex.test(course.courseID) && course.courseType === "選修"
+          regex.test(course.courseID) && !majorRequired.has(course.courseID)
       );
     });
   criteriaPassedCourses["CEECSElective"] = CEECSElectiveRecognizedCourses;
@@ -992,7 +1012,7 @@ function createEESection(result: ResultDict | any, criteria: string) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isRulePassed = result["isRulePassed"];
   const isRulePassedTextColor = isRulePassed ? "#96ee11" : "#ff5050";
-  const isRulePassedText = isRulePassed ? "Yes":"No";
+  const isRulePassedText = isRulePassed ? "Yes" : "No";
   delete result["isRulePassed"];
   // 1. Required (The same as commonRequired pipeline)
   let resultWOAsteriskAndExperiment = Object.fromEntries(
@@ -1006,18 +1026,23 @@ function createEESection(result: ResultDict | any, criteria: string) {
   // 2. Experiment Group (should display group and courses)
   let resultExperimentGroup = result["ExperimentGroup"];
   let isExperimentGroupPassed = resultExperimentGroup["isRulePassed"];
-  let isExperimentGroupPassedTextColor = isExperimentGroupPassed ? "#96ee11" : "#ff5050";
-  let isExperimentGroupPassedText = isExperimentGroupPassed ? "Yes":"No";
+  let isExperimentGroupPassedTextColor = isExperimentGroupPassed
+    ? "#96ee11"
+    : "#ff5050";
+  let isExperimentGroupPassedText = isExperimentGroupPassed ? "Yes" : "No";
 
   delete resultExperimentGroup["isRulePassed"];
 
   // 3. AsteriskRequiredElective (should display category and courses)
   let resultAsteriskRequiredElective = result["AsteriskRequiredElective"];
-  let isAsteriskRequiredElectivePassed = resultAsteriskRequiredElective["isRulePassed"];
-  let isAsteriskRequiredElectivePassedTextColor = isAsteriskRequiredElectivePassed ? "#96ee11" : "#ff5050";
-  let isAsteriskRequiredElectivePassedText = isAsteriskRequiredElectivePassed ? "Yes":"No";
+  let isAsteriskRequiredElectivePassed =
+    resultAsteriskRequiredElective["isRulePassed"];
+  let isAsteriskRequiredElectivePassedTextColor =
+    isAsteriskRequiredElectivePassed ? "#96ee11" : "#ff5050";
+  let isAsteriskRequiredElectivePassedText = isAsteriskRequiredElectivePassed
+    ? "Yes"
+    : "No";
 
-  
   delete resultAsteriskRequiredElective["isRulePassed"];
 
   let htmlString = `
@@ -1273,7 +1298,6 @@ function GradReviewer() {
     )
   );
 
-
   const handleHTMLClick = () => {
     const html = createHTMLFile(htmlSections);
     const blob = new Blob([html], { type: "text/html" });
@@ -1281,7 +1305,7 @@ function GradReviewer() {
     link.href = URL.createObjectURL(blob);
     link.download = `IPEECS_GradReviewReport_${AllData.checkData.generalInfo.studentName}_${AllData.checkData.generalInfo.studentID}.html`;
     link.click();
-  }
+  };
 
   // const handlePDFClick = async () => {
   //   const html = createHTMLFile(htmlSections);
@@ -1300,7 +1324,7 @@ function GradReviewer() {
   //   // Create a PDF using jsPDF
   //   const imgData = canvas.toDataURL("image/png");
   //   const pdf = new jsPDF("p", "mm", "a4");
-    
+
   //   pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
   //   pdf.save(
   //     `IPEECS_GradReviewReport_${AllData.checkData.generalInfo.studentName}_${AllData.checkData.generalInfo.studentID}.pdf`
